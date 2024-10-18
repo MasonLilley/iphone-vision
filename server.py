@@ -3,6 +3,7 @@ import websockets
 import numpy as np
 import cv2
 import time
+import visionProcessing as vp
 
 async def display_image(websocket, path):
     frame_count = 0
@@ -20,7 +21,10 @@ async def display_image(websocket, path):
             image = cv2.rotate(image, cv2.ROTATE_90_CLOCKWISE)
             cv2.putText(image, f"FPS: {frame_count / (time.time() - start_time):.2f}", 
                         (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
-
+            
+            #Image processing in seperate file
+            image = vp.processImage(image)
+            
             cv2.imshow("Received Image", image)
             cv2.waitKey(1) 
         else:

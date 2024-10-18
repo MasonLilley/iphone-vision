@@ -15,10 +15,36 @@ class ViewController: UIViewController {
         setupCaptureSession()
         webSocketClient.connect()
         setupReconnectButton()
+        setupSwapCameraButton()
         setupIPAddressButton()
         setupConnectedDisplay()
         
         connectionStatusTimer = Timer.scheduledTimer(timeInterval: 1.0, target: self, selector: #selector(updateConnectionState), userInfo: nil, repeats: true)
+    }
+    
+    func setupSwapCameraButton() {
+        let swapCameraButton = UIButton()
+        
+        let swapCameraImage = UIImage(systemName: "camera.on.rectangle")
+        swapCameraButton.setImage(swapCameraImage, for: .normal)
+        
+        swapCameraButton.tintColor = .systemRed // Optional: Set the tint color for the image
+        swapCameraButton.imageView?.contentMode = .scaleAspectFit
+        swapCameraButton.translatesAutoresizingMaskIntoConstraints = false
+        swapCameraButton.addTarget(self, action: #selector(swapCamera), for: .touchUpInside)
+        view.addSubview(swapCameraButton)
+
+        NSLayoutConstraint.activate([
+            swapCameraButton.centerXAnchor.constraint(equalTo: view.leadingAnchor, constant: 80),
+            swapCameraButton.topAnchor.constraint(equalTo: view.bottomAnchor, constant: -100),
+            swapCameraButton.widthAnchor.constraint(equalToConstant: 200),
+            swapCameraButton.heightAnchor.constraint(equalToConstant: 50)
+        ])
+    }
+    
+    @objc func swapCamera() {
+        useSelfieCamera = useSelfieCamera ? false : true
+        viewDidLoad()
     }
     
     func setupWebSocketClient(ip: String = "192.168.0.113", port: String = "6789") {

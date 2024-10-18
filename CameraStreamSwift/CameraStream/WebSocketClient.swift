@@ -4,9 +4,10 @@ class WebSocketClient {
     var webSocketTask: URLSessionWebSocketTask?
     var url: URL?
     var isConnected = false
+    var pingTimer: DispatchWorkItem?
 
     init(url: URL? = URL(string: "ws://192.168.0.113:6789")) {
-        self.url = url
+        updateURL(to: url)
     }
 
     func connect() {
@@ -48,24 +49,34 @@ class WebSocketClient {
     }
     
     private func ping() {
-        webSocketTask?.sendPing { error in
-            if let error = error {
-                print("Ping error: \(error.localizedDescription)")
-                self.isConnected = false
-            } else {
-                print("Ping sent successfully.")
-                self.isConnected = true
-            }
-            
-            // Schedule the next ping after 2 seconds
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                self.ping()
+        pingTimer?.cancel()
+        
+        pingTimer = DispatchWorkItem { [weak self] in
+            self?.webSocketTask?.sendPing { error in
+                if let error = error {
+                    print("Ping error: \(error.localizedDescription)")
+                    self?.isConnected = false
+                } else {
+                    print("Ping sent successfully.")
+                    self?.isConnected = true
+                }
+                
+                self?.ping()
             }
         }
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2, execute: pingTimer!)
     }
 
 
     func disconnect() {
         webSocketTask?.cancel(with: .goingAway, reason: nil)
+    }
+    
+    func updateURL(to newURL: URL?) {
+        pingTimer?.cancel()
+        disconnect()
+        self.url = newURL
+        connect()
     }
 }
