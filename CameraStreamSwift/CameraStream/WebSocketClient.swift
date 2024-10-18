@@ -2,21 +2,25 @@ import Foundation
 
 class WebSocketClient {
     var webSocketTask: URLSessionWebSocketTask?
+    var url: URL?
 
-    let url = URL(string: "ws://192.168.0.113:6789")! // Change to 'wss' if using a secure WebSocket
+    init(url: URL? = URL(string: "ws://192.168.0.113:6789")) {
+        self.url = url
+    }
 
     func connect() {
+        guard let url = url else { return }
         print("Connecting to \(url)")
         webSocketTask = URLSession.shared.webSocketTask(with: url)
         webSocketTask?.resume()
-        listen() // Start listening for messages
+        listen()
     }
 
     func sendFrame(data: Data) {
         let message = URLSessionWebSocketTask.Message.data(data)
         webSocketTask?.send(message) { error in
-            if let error = error {
-//                print("Error sending a message: \(error.localizedDescription)")
+            if error != nil {
+                // print("Error sending a message: \(error.localizedDescription)")
             }
         }
     }
@@ -31,8 +35,7 @@ class WebSocketClient {
                 case .data(let data):
                     print("Received data: \(data.count) bytes")
                 case .string(let text):
-                    1+1
-                    //print("Received string: \(text)")
+                    print("Received string: \(text)")
                 default:
                     break
                 }

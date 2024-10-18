@@ -27,7 +27,7 @@ async def display_image(websocket, path):
             print("Failed to decode image")
 
         #FPS calculator
-        if time.time() - start_time >= 0.1:
+        if time.time() - start_time >= 1:
             frame_count = 0
             start_time = time.time()
 
