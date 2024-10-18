@@ -3,6 +3,7 @@ import Foundation
 class WebSocketClient {
     var webSocketTask: URLSessionWebSocketTask?
     var url: URL?
+    var isConnected = false
 
     init(url: URL? = URL(string: "ws://192.168.0.113:6789")) {
         self.url = url
@@ -13,7 +14,9 @@ class WebSocketClient {
         print("Connecting to \(url)")
         webSocketTask = URLSession.shared.webSocketTask(with: url)
         webSocketTask?.resume()
+        isConnected = true // Set connected state to true
         listen()
+        ping()
     }
 
     func sendFrame(data: Data) {
@@ -39,11 +42,28 @@ class WebSocketClient {
                 default:
                     break
                 }
-                // Listen for the next message
                 self.listen()
             }
         }
     }
+    
+    private func ping() {
+        webSocketTask?.sendPing { error in
+            if let error = error {
+                print("Ping error: \(error.localizedDescription)")
+                self.isConnected = false
+            } else {
+                print("Ping sent successfully.")
+                self.isConnected = true
+            }
+            
+            // Schedule the next ping after 2 seconds
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                self.ping()
+            }
+        }
+    }
+
 
     func disconnect() {
         webSocketTask?.cancel(with: .goingAway, reason: nil)

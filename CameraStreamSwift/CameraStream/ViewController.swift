@@ -5,8 +5,10 @@ class ViewController: UIViewController {
     var captureSession: AVCaptureSession!
     var videoOutput: AVCaptureVideoDataOutput!
     var webSocketClient = WebSocketClient()
+    let connectedDot = UIView()
     let reconnectButton = UIButton()
     var useSelfieCamera = false
+    var connectionStatusTimer: Timer?
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -14,53 +16,16 @@ class ViewController: UIViewController {
         webSocketClient.connect()
         setupReconnectButton()
         setupIPAddressButton()
+        setupConnectedDisplay()
+        
+        connectionStatusTimer = Timer.scheduledTimer(timeInterval: 1.0, target: self, selector: #selector(updateConnectionState), userInfo: nil, repeats: true)
     }
     
     func setupWebSocketClient(ip: String = "192.168.0.113", port: String = "6789") {
             let urlString = "ws://\(ip):\(port)"
             guard let url = URL(string: urlString) else { return }
             webSocketClient = WebSocketClient(url: url)
-        }
-
-        func setupIPAddressButton() {
-            let ipButton = UIButton()
-            ipButton.setTitle("Set IP & Port", for: .normal)
-            ipButton.translatesAutoresizingMaskIntoConstraints = false
-            ipButton.addTarget(self, action: #selector(showIPAddressDialog), for: .touchUpInside)
-            view.addSubview(ipButton)
-
-            NSLayoutConstraint.activate([
-                ipButton.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-                ipButton.topAnchor.constraint(equalTo: view.topAnchor, constant: 775),
-                ipButton.widthAnchor.constraint(equalToConstant: 200),
-                ipButton.heightAnchor.constraint(equalToConstant: 50)
-            ])
-        }
-
-        @objc func showIPAddressDialog() {
-            let alert = UIAlertController(title: "Set IP Address and Port", message: "Enter the IP address and port:", preferredStyle: .alert)
-            alert.addTextField { textField in
-                textField.placeholder = "IP Address"
-                textField.text = "192.168.0.113"
-            }
-            alert.addTextField { textField in
-                textField.placeholder = "Port"
-                textField.text = "6789"
-            }
-
-            let confirmAction = UIAlertAction(title: "Connect", style: .default) { _ in
-                let ipField = alert.textFields![0]
-                let portField = alert.textFields![1]
-                if let ip = ipField.text, let port = portField.text {
-                    self.setupWebSocketClient(ip: ip, port: port)
-                    self.webSocketClient.connect()
-                }
-            }
-
-            alert.addAction(confirmAction)
-            alert.addAction(UIAlertAction(title: "Cancel", style: .cancel, handler: nil))
-            present(alert, animated: true, completion: nil)
-        }
+    }
     
     func setupCaptureSession() {
         captureSession = AVCaptureSession()
@@ -94,6 +59,46 @@ class ViewController: UIViewController {
         DispatchQueue.global(qos: .background).async {
             self.captureSession.startRunning()
         }
+    }
+
+    func setupIPAddressButton() {
+        let ipButton = UIButton()
+        ipButton.setTitle("Set IP & Port", for: .normal)
+        ipButton.translatesAutoresizingMaskIntoConstraints = false
+        ipButton.addTarget(self, action: #selector(showIPAddressDialog), for: .touchUpInside)
+        view.addSubview(ipButton)
+
+        NSLayoutConstraint.activate([
+            ipButton.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            ipButton.topAnchor.constraint(equalTo: view.topAnchor, constant: 775),
+            ipButton.widthAnchor.constraint(equalToConstant: 200),
+            ipButton.heightAnchor.constraint(equalToConstant: 50)
+        ])
+    }
+
+    @objc func showIPAddressDialog() {
+        let alert = UIAlertController(title: "Set IP Address and Port", message: "Enter the IP address and port:", preferredStyle: .alert)
+        alert.addTextField { textField in
+            textField.placeholder = "IP Address"
+            textField.text = "192.168.0.113"
+        }
+        alert.addTextField { textField in
+            textField.placeholder = "Port"
+            textField.text = "6789"
+        }
+
+        let confirmAction = UIAlertAction(title: "Connect", style: .default) { _ in
+            let ipField = alert.textFields![0]
+            let portField = alert.textFields![1]
+            if let ip = ipField.text, let port = portField.text {
+                self.setupWebSocketClient(ip: ip, port: port)
+                self.webSocketClient.connect()
+            }
+        }
+
+        alert.addAction(confirmAction)
+        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel, handler: nil))
+        present(alert, animated: true, completion: nil)
     }
 
     func setupReconnectButton() {
@@ -135,7 +140,32 @@ class ViewController: UIViewController {
         webSocketClient.disconnect()
         webSocketClient.connect()
     }
+    
+    func updateConnectedDot(isConnected: Bool) {
+        connectedDot.backgroundColor = isConnected ? .green : .red
+    }
+    
+    @objc func updateConnectionState() {
+        updateConnectedDot(isConnected: webSocketClient.isConnected)
+    }
+    
+    func setupConnectedDisplay() {
+        connectedDot.backgroundColor = .red
+        connectedDot.translatesAutoresizingMaskIntoConstraints = false
+        connectedDot.layer.cornerRadius = 15 //half of constraints
+        view.addSubview(connectedDot)
+
+        NSLayoutConstraint.activate([
+            connectedDot.centerXAnchor.constraint(equalTo: view.leadingAnchor, constant: 350),
+            connectedDot.centerYAnchor.constraint(equalTo: view.bottomAnchor, constant: -75),
+            connectedDot.widthAnchor.constraint(equalToConstant: 30),
+            connectedDot.heightAnchor.constraint(equalToConstant: 30)
+        ])
+        updateConnectedDot(isConnected:webSocketClient.isConnected)
+    }
 }
+
+
 
 private var frameCounter = 0
 extension ViewController: AVCaptureVideoDataOutputSampleBufferDelegate {
