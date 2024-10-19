@@ -4,6 +4,13 @@ import numpy as np
 import cv2
 import time
 import visionProcessing as vp
+import pygame
+
+# Pygame init
+pygame.init()
+window_size = (640, 480)
+screen = pygame.display.set_mode(window_size)
+pygame.display.set_caption("Received Image")
 
 async def display_image(websocket, queue):
     frame_count = 0
@@ -24,7 +31,10 @@ async def display_image(websocket, queue):
             # Image processing in separate file
             image = vp.processImage(image)
             
-            cv2.imshow("Received Image", image)
+            #Py game logic?
+            # cv2.imshow("Received Image", image)
+            cvImg_To_PygameImg(image)
+            
             cv2.waitKey(1) 
         else:
             print("Failed to decode image")
@@ -49,6 +59,14 @@ async def handle_connection(websocket, path):
     producer_task = asyncio.create_task(receive_data(websocket, queue))
     
     await asyncio.gather(consumer_task, producer_task)
+
+def cvImg_To_PygameImg(image):
+    screen.fill([0, 0, 0])
+    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+    image = np.rot90(image)
+    image = pygame.surfarray.make_surface(image)
+    screen.blit(image, (0, 0))
+    pygame.display.update()
 
 async def main():
     async with websockets.serve(handle_connection, "0.0.0.0", 6789):
