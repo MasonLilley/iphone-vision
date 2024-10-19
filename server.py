@@ -16,33 +16,36 @@ async def display_image(websocket, queue):
     frame_count = 0
     start_time = time.time()
 
-    while True:
-        binary_data = await queue.get()  # Get the latest data from the queue
-        np_array = np.frombuffer(binary_data, dtype=np.uint8)
-        image = cv2.imdecode(np_array, cv2.IMREAD_COLOR)
+    try:
+        while True:
+            binary_data = await queue.get()  # Get the latest data from the queue
+            np_array = np.frombuffer(binary_data, dtype=np.uint8)
+            image = cv2.imdecode(np_array, cv2.IMREAD_COLOR)
 
-        if image is not None:
-            frame_count += 1
-            
-            image = cv2.rotate(image, cv2.ROTATE_90_CLOCKWISE)
-            cv2.putText(image, f"FPS: {frame_count / (time.time() - start_time):.2f}", 
-                        (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
-            
-            # Image processing in separate file
-            image = vp.processImage(image)
-            
-            #Py game logic?
-            # cv2.imshow("Received Image", image)
-            cvImg_To_PygameImg(image)
-            
-            cv2.waitKey(1) 
-        else:
-            print("Failed to decode image")
+            if image is not None:
+                frame_count += 1
+                
+                image = cv2.rotate(image, cv2.ROTATE_90_CLOCKWISE)
+                cv2.putText(image, f"FPS: {frame_count / (time.time() - start_time):.2f}", 
+                            (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+                
+                # Image processing in separate file
+                image = vp.processImage(image)
+                
+                #Py game logic?
+                # cv2.imshow("Received Image", image)
+                cvImg_To_PygameImg(image)
+                
+                cv2.waitKey(1) 
+            else:
+                print("Failed to decode image")
 
-        # FPS calculator
-        if time.time() - start_time >= 1:
-            frame_count = 0
-            start_time = time.time()
+            # FPS calculator
+            if time.time() - start_time >= 1:
+                frame_count = 0
+                start_time = time.time()
+    except websockets.exceptions.ConnectionClosedOK:
+        print("connection closed gracefully")
 
 async def receive_data(websocket, queue):
     while True:
@@ -58,12 +61,18 @@ async def handle_connection(websocket, path):
     consumer_task = asyncio.create_task(display_image(websocket, queue))
     producer_task = asyncio.create_task(receive_data(websocket, queue))
     
-    await asyncio.gather(consumer_task, producer_task)
-
+    try:
+        await asyncio.gather(consumer_task, producer_task)
+    except websockets.exceptions.ConnectionClosedOK:
+        print("Connection closed gracefully dubs")
+    except Exception as e:
+        print(f"Error in handle_connection: {e}")
+    finally:
+        consumer_task.cancel()
+        
 def cvImg_To_PygameImg(image):
     screen.fill([0, 0, 0])
     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-    image = np.rot90(image)
     image = pygame.surfarray.make_surface(image)
     screen.blit(image, (0, 0))
     pygame.display.update()
