@@ -6,7 +6,7 @@ class WebSocketClient {
     var isConnected = false
     var pingTimer: DispatchWorkItem?
 
-    init(url: URL? = URL(string: "ws://192.168.0.113:6789")) {
+    init(url: URL? = URL(string: "ws://192.168.0.139:6789")) {
         updateURL(to: url)
     }
 
@@ -14,8 +14,10 @@ class WebSocketClient {
         guard let url = url else { return }
         print("Connecting to \(url)")
         webSocketTask = URLSession.shared.webSocketTask(with: url)
+        if webSocketTask == nil {
+            print("no websocket task!")
+        }
         webSocketTask?.resume()
-        isConnected = true // Set connected state to true
         listen()
         ping()
     }

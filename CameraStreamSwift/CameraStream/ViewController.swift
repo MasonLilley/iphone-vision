@@ -14,37 +14,13 @@ class ViewController: UIViewController {
         super.viewDidLoad()
         setupCaptureSession()
         webSocketClient.connect()
+        
         setupReconnectButton()
         setupSwapCameraButton()
         setupIPAddressButton()
         setupConnectedDisplay()
         
         connectionStatusTimer = Timer.scheduledTimer(timeInterval: 1.0, target: self, selector: #selector(updateConnectionState), userInfo: nil, repeats: true)
-    }
-    
-    func setupSwapCameraButton() {
-        let swapCameraButton = UIButton()
-        
-        let swapCameraImage = UIImage(systemName: "camera.on.rectangle")
-        swapCameraButton.setImage(swapCameraImage, for: .normal)
-        
-        swapCameraButton.tintColor = .systemRed // Optional: Set the tint color for the image
-        swapCameraButton.imageView?.contentMode = .scaleAspectFit
-        swapCameraButton.translatesAutoresizingMaskIntoConstraints = false
-        swapCameraButton.addTarget(self, action: #selector(swapCamera), for: .touchUpInside)
-        view.addSubview(swapCameraButton)
-
-        NSLayoutConstraint.activate([
-            swapCameraButton.centerXAnchor.constraint(equalTo: view.leadingAnchor, constant: 80),
-            swapCameraButton.topAnchor.constraint(equalTo: view.bottomAnchor, constant: -100),
-            swapCameraButton.widthAnchor.constraint(equalToConstant: 200),
-            swapCameraButton.heightAnchor.constraint(equalToConstant: 50)
-        ])
-    }
-    
-    @objc func swapCamera() {
-        useSelfieCamera = useSelfieCamera ? false : true
-        viewDidLoad()
     }
     
     func setupWebSocketClient(ip: String = "192.168.0.113", port: String = "6789") {
@@ -57,7 +33,19 @@ class ViewController: UIViewController {
         captureSession = AVCaptureSession()
         
         let cameraPosition: AVCaptureDevice.Position = useSelfieCamera ? .front : .back
-        guard let videoDevice = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: cameraPosition) else {return}
+        
+        // Attempt to get the wide-angle camera
+        let wideAngleCamera: AVCaptureDevice? = {
+            if let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: cameraPosition) {
+                return device
+            }
+            return nil
+        }()
+
+        guard let videoDevice = wideAngleCamera else {
+            print("Wide-angle camera not available, falling back to standard camera.")
+            return
+        }
         
         let videoInput: AVCaptureDeviceInput
         do {
@@ -86,6 +74,31 @@ class ViewController: UIViewController {
             self.captureSession.startRunning()
         }
     }
+    
+    func setupSwapCameraButton() {
+        let swapCameraButton = UIButton()
+        
+        let swapCameraImage = UIImage(systemName: "camera.on.rectangle")
+        swapCameraButton.setImage(swapCameraImage, for: .normal)
+        
+        swapCameraButton.tintColor = .systemOrange
+        swapCameraButton.imageView?.contentMode = .scaleAspectFit
+        swapCameraButton.translatesAutoresizingMaskIntoConstraints = false
+        swapCameraButton.addTarget(self, action: #selector(swapCamera), for: .touchUpInside)
+        view.addSubview(swapCameraButton)
+
+        NSLayoutConstraint.activate([
+            swapCameraButton.centerXAnchor.constraint(equalTo: view.leadingAnchor, constant: 80),
+            swapCameraButton.topAnchor.constraint(equalTo: view.bottomAnchor, constant: -100),
+            swapCameraButton.widthAnchor.constraint(equalToConstant: 200),
+            swapCameraButton.heightAnchor.constraint(equalToConstant: 50)
+        ])
+    }
+    
+    @objc func swapCamera() {
+        useSelfieCamera = useSelfieCamera ? false : true
+        viewDidLoad()
+    }
 
     func setupIPAddressButton() {
         let ipButton = UIButton()
@@ -106,7 +119,7 @@ class ViewController: UIViewController {
         let alert = UIAlertController(title: "Set IP Address and Port", message: "Enter the IP address and port:", preferredStyle: .alert)
         alert.addTextField { textField in
             textField.placeholder = "IP Address"
-            textField.text = "192.168.0.113"
+            textField.text = "192.168.0.139"
         }
         alert.addTextField { textField in
             textField.placeholder = "Port"
@@ -179,6 +192,11 @@ class ViewController: UIViewController {
         connectedDot.backgroundColor = .red
         connectedDot.translatesAutoresizingMaskIntoConstraints = false
         connectedDot.layer.cornerRadius = 15 //half of constraints
+        
+        
+        let tapGestureRecognizer = UITapGestureRecognizer(target: self, action: #selector(getNewSendFraction))
+        connectedDot.addGestureRecognizer(tapGestureRecognizer)
+
         view.addSubview(connectedDot)
 
         NSLayoutConstraint.activate([
@@ -189,16 +207,57 @@ class ViewController: UIViewController {
         ])
         updateConnectedDot(isConnected:webSocketClient.isConnected)
     }
+    
+    @objc func getNewSendFraction() {
+        let alert = UIAlertController(title: "Set fraction of frames NOT to send", message: "Enter fraction:", preferredStyle: .alert)
+        alert.addTextField { textField in
+            textField.placeholder = "Numerator"
+            textField.text = "1"
+        }
+        alert.addTextField { textField in
+            textField.placeholder = "Denominator"
+            textField.text = "1"
+        }
+
+        let confirmAction = UIAlertAction(title: "Confirm", style: .default) { _ in
+            if let numeratorText = alert.textFields?[0].text,
+               let denominatorText = alert.textFields?[1].text,
+               let numerator = Int(numeratorText),
+               let denominator = Int(denominatorText), denominator != 0 {
+                
+                sendFractionNumerator = numerator
+                sendFractionDenominator = denominator
+                print("Fraction updated to \(numerator)/\(denominator)")
+            } else {
+                // Show an alert for invalid input
+                let invalidInputAlert = UIAlertController(title: "Invalid Input", message: "Please enter valid numerator and denominator.", preferredStyle: .alert)
+                invalidInputAlert.addAction(UIAlertAction(title: "OK", style: .default, handler: nil))
+                self.present(invalidInputAlert, animated: true, completion: nil)
+            }
+        }
+
+        alert.addAction(confirmAction)
+        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel, handler: nil))
+        present(alert, animated: true, completion: nil)
+    }
+
 }
 
 
 
 private var frameCounter = 0
+private var sendFractionNumerator = 1
+private var sendFractionDenominator = 1
 extension ViewController: AVCaptureVideoDataOutputSampleBufferDelegate {
     func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
         frameCounter += 1
-//         if frameCounter % 3 != 0 {return} //Only send 1/3 frames
-
+        if sendFractionNumerator == sendFractionDenominator {
+            print("sending all frames")
+        } else if frameCounter % sendFractionDenominator >= sendFractionDenominator - sendFractionNumerator {
+            print("not sending frame!")
+            return // Skip sending this frame
+        }
+        print("sending frame")
         guard let imageBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
 
         let pixelBuffer = imageBuffer

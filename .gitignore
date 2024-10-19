@@ -1,3 +1,5 @@
 myVenv/
 .DS_Store
 CameraStreamSwift/CameraStream.xcodeproj/project.xcworkspace/xcuserdata/masonlilley.xcuserdatad/UserInterfaceState.xcuserstate
+dataset/
+trainer/trainer.yml

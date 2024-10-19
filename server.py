@@ -5,13 +5,12 @@ import cv2
 import time
 import visionProcessing as vp
 
-async def display_image(websocket, path):
+async def display_image(websocket, queue):
     frame_count = 0
     start_time = time.time()
 
     while True:
-        # binary data -> numpy array -> opencv decodes it
-        binary_data = await websocket.recv()
+        binary_data = await queue.get()  # Get the latest data from the queue
         np_array = np.frombuffer(binary_data, dtype=np.uint8)
         image = cv2.imdecode(np_array, cv2.IMREAD_COLOR)
 
@@ -22,7 +21,7 @@ async def display_image(websocket, path):
             cv2.putText(image, f"FPS: {frame_count / (time.time() - start_time):.2f}", 
                         (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
             
-            #Image processing in seperate file
+            # Image processing in separate file
             image = vp.processImage(image)
             
             cv2.imshow("Received Image", image)
@@ -30,13 +29,29 @@ async def display_image(websocket, path):
         else:
             print("Failed to decode image")
 
-        #FPS calculator
+        # FPS calculator
         if time.time() - start_time >= 1:
             frame_count = 0
             start_time = time.time()
 
+async def receive_data(websocket, queue):
+    while True:
+        binary_data = await websocket.recv()
+        
+        if queue.full():
+            await queue.get()  # Discard the oldest frame
+        
+        await queue.put(binary_data)  # Add the new data to the queue
+
+async def handle_connection(websocket, path):
+    queue = asyncio.Queue(maxsize=1)  # Keep only the latest frame
+    consumer_task = asyncio.create_task(display_image(websocket, queue))
+    producer_task = asyncio.create_task(receive_data(websocket, queue))
+    
+    await asyncio.gather(consumer_task, producer_task)
+
 async def main():
-    async with websockets.serve(display_image, "0.0.0.0", 6789):
+    async with websockets.serve(handle_connection, "0.0.0.0", 6789):
         print("Server started at ws://0.0.0.0:6789")
         await asyncio.Future()
 
