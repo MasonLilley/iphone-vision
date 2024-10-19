@@ -10,7 +10,7 @@ import pygame
 pygame.init()
 window_size = (640, 480)
 screen = pygame.display.set_mode(window_size)
-pygame.display.set_caption("Received Image")
+pygame.display.set_caption("Received Image Pygame")
 
 async def display_image(websocket, queue):
     frame_count = 0
@@ -33,8 +33,8 @@ async def display_image(websocket, queue):
                 image = vp.processImage(image)
                 
                 #Py game logic?
-                # cv2.imshow("Received Image", image)
-                cvImg_To_PygameImg(image)
+                cv2.imshow("Received Image", image)
+                displayPygame(image)
                 
                 cv2.waitKey(1) 
             else:
@@ -70,7 +70,7 @@ async def handle_connection(websocket, path):
     finally:
         consumer_task.cancel()
         
-def cvImg_To_PygameImg(image):
+def displayPygame(image):
     screen.fill([0, 0, 0])
     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
     image = pygame.surfarray.make_surface(image)
