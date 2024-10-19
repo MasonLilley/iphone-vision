@@ -4,13 +4,6 @@ import numpy as np
 import cv2
 import time
 import visionProcessing as vp
-import pygame
-
-# Pygame init
-pygame.init()
-window_size = (640, 480)
-screen = pygame.display.set_mode(window_size)
-pygame.display.set_caption("Received Image Pygame")
 
 async def display_image(websocket, queue):
     frame_count = 0
@@ -32,9 +25,8 @@ async def display_image(websocket, queue):
                 # Image processing in separate file
                 image = vp.processImage(image)
                 
-                #Py game logic?
+                #TKINTER LOGIC HERE!!!
                 cv2.imshow("Received Image", image)
-                displayPygame(image)
                 
                 cv2.waitKey(1) 
             else:
@@ -69,13 +61,6 @@ async def handle_connection(websocket, path):
         print(f"Error in handle_connection: {e}")
     finally:
         consumer_task.cancel()
-        
-def displayPygame(image):
-    screen.fill([0, 0, 0])
-    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-    image = pygame.surfarray.make_surface(image)
-    screen.blit(image, (0, 0))
-    pygame.display.update()
 
 async def main():
     async with websockets.serve(handle_connection, "0.0.0.0", 6789):
