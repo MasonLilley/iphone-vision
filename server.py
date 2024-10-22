@@ -4,6 +4,7 @@ import numpy as np
 import cv2
 import time
 import visionProcessing as vp
+import faceRecognition as faces
 
 async def display_image(websocket, queue):
     frame_count = 0
@@ -23,7 +24,7 @@ async def display_image(websocket, queue):
                             (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
                 
                 # Image processing in separate file
-                image = vp.processImage(image)
+                image = faces.recognize_face_in_image(image)
                 
                 #TKINTER LOGIC HERE!!!
                 cv2.imshow("Received Image", image)

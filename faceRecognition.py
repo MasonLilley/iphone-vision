@@ -44,7 +44,6 @@ def capture_faces(user_id, sample_size=30):
     cv2.destroyAllWindows()
     print(f"\n[INFO] Captured {count} face samples for User {user_id}.")
 
-# Function to train face recognizer
 def train_recognizer():
     image_paths = [os.path.join(dataset_path, f) for f in os.listdir(dataset_path)]
     face_samples = []
@@ -64,7 +63,7 @@ def train_recognizer():
     recognizer.write(trainer_path)
     print(f"\n[INFO] {len(np.unique(ids))} faces trained. Model saved.")
 
-# Function to recognize faces in real-time
+# real-time
 def recognize_faces():
     recognizer.read(trainer_path)
     font = cv2.FONT_HERSHEY_SIMPLEX
@@ -99,7 +98,6 @@ def recognize_faces():
     cam.release()
     cv2.destroyAllWindows()
 
-# Main Menu
 if __name__ == "__main__":
     while True:
         print("\n1. Capture Face Data")
@@ -120,12 +118,9 @@ if __name__ == "__main__":
             break
         else:
             print("[ERROR] Invalid option, try again.")
-
-
-
-
-
+            
 def recognize_face_in_image(image):
+    recognizer.read(trainer_path)
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     faces = face_cascade.detectMultiScale(gray, 1.2, 5)
     font = cv2.FONT_HERSHEY_SIMPLEX
@@ -141,7 +136,7 @@ def recognize_face_in_image(image):
             if user_id == 1:
                 name = "Mason"
             elif user_id == 2:
-                name = "Placeholder"
+                name = "Max"
 
             cv2.putText(image, f"{name}", (x+5, y-5), font, 1, (255, 255, 255), 2)
             cv2.putText(image, confidence_text, (x+5, y+h-5), font, 1, (255, 255, 0), 1)

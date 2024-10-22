@@ -5,8 +5,9 @@ class WebSocketClient {
     var url: URL?
     var isConnected = false
     var pingTimer: DispatchWorkItem?
+    var currentIP = ViewController.currentIP
 
-    init(url: URL? = URL(string: "ws://192.168.0.139:6789")) {
+    init(url: URL? = URL(string: currentIP)) {
         updateURL(to: url)
     }
 

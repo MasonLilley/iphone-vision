@@ -9,6 +9,8 @@ class ViewController: UIViewController {
     let reconnectButton = UIButton()
     var useSelfieCamera = false
     var connectionStatusTimer: Timer?
+    public static var currentIP = "192.168.0.39"
+    public static var currentPort = "6789"
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -23,7 +25,7 @@ class ViewController: UIViewController {
         connectionStatusTimer = Timer.scheduledTimer(timeInterval: 1.0, target: self, selector: #selector(updateConnectionState), userInfo: nil, repeats: true)
     }
     
-    func setupWebSocketClient(ip: String = "192.168.0.113", port: String = "6789") {
+    func setupWebSocketClient(ip: String = currentIP, port: String = currentPort) {
             let urlString = "ws://\(ip):\(port)"
             guard let url = URL(string: urlString) else { return }
             webSocketClient = WebSocketClient(url: url)
