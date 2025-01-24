@@ -7,8 +7,12 @@ class WebSocketClient {
     var pingTimer: DispatchWorkItem?
     var currentIP = ViewController.currentIP
 
-    init(url: URL? = URL(string: currentIP)) {
-        updateURL(to: url)
+    init(url: URL? = nil) {
+        if let customURL = url {
+            updateURL(to: customURL)
+        } else if let defaultURL = URL(string: addWebSocketScheme(to: currentIP)) {
+            updateURL(to: defaultURL)
+        }
     }
 
     func connect() {
@@ -82,4 +86,13 @@ class WebSocketClient {
         self.url = newURL
         connect()
     }
+    
+    //Util Functions
+    private func addWebSocketScheme(to ip: String) -> String {
+           if ip.hasPrefix("ws://") || ip.hasPrefix("wss://") {
+               return ip
+           }
+           // Default to `ws://` if no scheme is provided
+           return "ws://\(ip)"
+       }
 }
