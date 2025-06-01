@@ -6,6 +6,15 @@ class WebSocketClient {
     var isConnected = false
     var pingTimer: DispatchWorkItem?
     var currentIP = ViewController.currentIP
+    
+    // backpressure detection
+    private var messageQueue = 0
+    private let maxQueueSize = 5
+    var isBackpressured: Bool {
+        return messageQueue >= maxQueueSize
+    }
+    var onBackpressureCallback: ((Double) -> Void)?
+    private var lastSentTime: CFAbsoluteTime?
 
     init(url: URL? = nil) {
         if let customURL = url {
@@ -28,19 +37,42 @@ class WebSocketClient {
     }
 
     func sendFrame(data: Data) {
+        messageQueue += 1
+        lastSentTime = CFAbsoluteTimeGetCurrent()
+        
         let message = URLSessionWebSocketTask.Message.data(data)
-        webSocketTask?.send(message) { error in
-            if error != nil {
-                // print("Error sending a message: \(error.localizedDescription)")
+        webSocketTask?.send(message) { [weak self] error in
+            guard let self = self else { return }
+            
+            self.messageQueue = max(0, self.messageQueue - 1)
+            
+            let pressure = Double(self.messageQueue) / Double(self.maxQueueSize)
+            self.onBackpressureCallback?(pressure)
+            
+            if let error = error {
+                print("Error sending a message: \(error.localizedDescription)")
+            } else if let lastTime = self.lastSentTime {
+                let latency = CFAbsoluteTimeGetCurrent() - lastTime
+                if latency > 0.1 { // >100ms == network lag
+                    let calculatedPressure = min(1.0, latency / 0.5) // 500ms = full pressure
+                    self.onBackpressureCallback?(calculatedPressure)
+                }
             }
+        }
+        
+        if messageQueue >= maxQueueSize / 2 {
+            onBackpressureCallback?(Double(messageQueue) / Double(maxQueueSize))
         }
     }
 
     private func listen() {
-        webSocketTask?.receive { result in
+        webSocketTask?.receive { [weak self] result in
+            guard let self = self else { return }
+            
             switch result {
             case .failure(let error):
                 print("Error receiving message: \(error.localizedDescription)")
+                self.onBackpressureCallback?(1.0)
             case .success(let message):
                 switch message {
                 case .data(let data):
@@ -63,9 +95,13 @@ class WebSocketClient {
                 if let error = error {
                     print("Ping error: \(error.localizedDescription)")
                     self?.isConnected = false
+                    self?.onBackpressureCallback?(1.0)
                 } else {
                     print("Ping sent successfully.")
                     self?.isConnected = true
+                    if self?.isBackpressured == false {
+                        self?.onBackpressureCallback?(0.0)
+                    }
                 }
                 
                 self?.ping()
@@ -75,9 +111,9 @@ class WebSocketClient {
         DispatchQueue.main.asyncAfter(deadline: .now() + 2, execute: pingTimer!)
     }
 
-
     func disconnect() {
         webSocketTask?.cancel(with: .goingAway, reason: nil)
+        messageQueue = 0
     }
     
     func updateURL(to newURL: URL?) {
@@ -87,12 +123,11 @@ class WebSocketClient {
         connect()
     }
     
-    //Util Functions
     private func addWebSocketScheme(to ip: String) -> String {
-           if ip.hasPrefix("ws://") || ip.hasPrefix("wss://") {
-               return ip
-           }
-           // Default to `ws://` if no scheme is provided
-           return "ws://\(ip)"
-       }
+        if ip.hasPrefix("ws://") || ip.hasPrefix("wss://") {
+            return ip
+        }
+        // Default to `ws://` if no scheme is provided
+        return "ws://\(ip)"
+    }
 }
