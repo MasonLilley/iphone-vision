@@ -5,6 +5,7 @@ import cv2
 import time
 from concurrent.futures import ThreadPoolExecutor
 import os
+import poseestimation
 
 # Try different decoders in order of speed
 try:
@@ -83,6 +84,7 @@ async def display_image(websocket, queue):
                 
                 # Rotate the image - this is an expensive operation, consider if it's necessary
                 image = cv2.rotate(image, cv2.ROTATE_90_CLOCKWISE)
+                image = poseestimation.drawPose(image, draw_stats=True)
                 
                 # Calculate and update FPS less frequently to reduce overhead
                 if current_time - last_fps_time >= fps_update_interval:
